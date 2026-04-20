@@ -4,25 +4,29 @@
 <meta charset="UTF-8">
 <title>LastWar AI</title>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+
 <style>
 body { font-family: sans-serif; padding: 20px; }
-.red { color: red; }
+.team { margin-top:20px; }
+.red { color:red; font-weight:bold; }
 </style>
 </head>
+
 <body>
 
-<h2>LastWar 編成AI</h2>
+<h2>LastWar 編成AI（強化版）</h2>
 
 <input type="file" id="imageInput">
-
 <button onclick="runOCR()">解析</button>
 
-<pre id="output"></pre>
+<div id="result"></div>
 
 <script>
 async function runOCR() {
   const file = document.getElementById("imageInput").files[0];
   if (!file) return;
+
+  document.getElementById("result").innerText = "解析中...";
 
   const { data: { text } } = await Tesseract.recognize(file, 'eng');
 
@@ -31,7 +35,7 @@ async function runOCR() {
   let players = [];
 
   lines.forEach(line => {
-    let match = line.match(/([A-Za-z]+)\s*(\d+)/);
+    let match = line.match(/([A-Za-z]+)\s*(\d{2,})/);
     if (match) {
       players.push({
         name: match[1],
@@ -40,8 +44,10 @@ async function runOCR() {
     }
   });
 
+  // 戦力順
   players.sort((a,b)=>b.power-a.power);
 
+  // チーム分け
   let A=[], B=[];
   let sumA=0, sumB=0;
 
@@ -50,13 +56,36 @@ async function runOCR() {
     else{ B.push(p); sumB+=p.power; }
   });
 
-  let result = "=== TEAM A ===\n";
-  A.forEach(p=>result+=`${p.name} ${p.power}\n`);
+  function formatTeam(team){
+    let main = team.slice(0,20);
+    let sub = team.slice(20,30);
+    let overflow = team.slice(30);
 
-  result += "\n=== TEAM B ===\n";
-  B.forEach(p=>result+=`${p.name} ${p.power}\n`);
+    let txt = "<b>先発</b><br>";
+    main.forEach(p=>txt+=`${p.name} ${p.power}<br>`);
 
-  document.getElementById("output").textContent = result;
+    txt += "<br><b>交代</b><br>";
+    sub.forEach(p=>txt+=`${p.name} ${p.power}<br>`);
+
+    txt += "<br><b class='red'>溢れ</b><br>";
+    overflow.forEach(p=>txt+=`<span class='red'>${p.name} ${p.power}</span><br>`);
+
+    return txt;
+  }
+
+  let html = `
+  <div class="team">
+    <h3>TEAM A (${sumA})</h3>
+    ${formatTeam(A)}
+  </div>
+
+  <div class="team">
+    <h3>TEAM B (${sumB})</h3>
+    ${formatTeam(B)}
+  </div>
+  `;
+
+  document.getElementById("result").innerHTML = html;
 }
 </script>
 
