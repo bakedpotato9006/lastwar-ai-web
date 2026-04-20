@@ -2,95 +2,90 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>LastWar AI デバッグ版</title>
+<title>LastWar AI デバッグ完全版</title>
 
 <style>
 body { font-family: sans-serif; padding: 20px; }
 button { margin-top:10px; }
-.log { font-size:12px; color:gray; margin-top:10px; }
+#log { font-size:12px; color:gray; margin-top:10px; white-space:pre-wrap; }
 </style>
 
 </head>
 
 <body>
 
-<h2>LastWar AI（デバッグ版）</h2>
+<h2>LastWar AI（完全デバッグ版）</h2>
 
 <input type="file" id="imageInput">
 <br>
 
-<button onclick="testClick()">① ボタンテスト</button>
-<button onclick="checkFile()">② ファイル確認</button>
-<button onclick="runOCR()">③ OCRテスト</button>
+<button onclick="testClick()">① テスト</button>
+<button onclick="runOCR()">② OCR実行</button>
 
 <h3>状態</h3>
-<div id="status"></div>
+<div id="status">待機中</div>
 
 <h3>ログ</h3>
-<div id="log" class="log"></div>
+<div id="log"></div>
 
-<!-- JSは必ず最後 -->
+<!-- OCRライブラリ -->
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 
 <script>
 function log(msg){
-  document.getElementById("log").innerHTML += msg + "<br>";
+  console.log(msg);
+  document.getElementById("log").innerHTML += msg + "\n";
 }
 
 // ① ボタン確認
 function testClick(){
-  alert("ボタンは動いています");
-  log("ボタンOK");
+  alert("ボタンOK");
+  log("ボタンは正常に動作しています");
 }
 
-// ② ファイル確認
-function checkFile(){
-  const file = document.getElementById("imageInput").files[0];
-
-  if(!file){
-    alert("ファイル未選択");
-    log("ファイルなし");
-    return;
-  }
-
-  alert("ファイル取得OK");
-  log("ファイル名: " + file.name);
-}
-
-// ③ OCRテスト（軽量版）
+// ② OCR
 async function runOCR(){
+
+  log("runOCR開始");
+
   const file = document.getElementById("imageInput").files[0];
 
   if(!file){
-    alert("ファイルを選択してください");
+    alert("画像を選択してください");
+    log("エラー：ファイル未選択");
     return;
   }
 
   document.getElementById("status").innerText = "OCR開始...";
-  log("OCR開始");
+  log("ファイル取得OK: " + file.name);
 
   try{
+    log("Tesseract開始");
+
     const result = await Tesseract.recognize(
       file,
       'eng',
       {
-        logger: m => log(m.status)
+        logger: m => log("進行: " + m.status)
       }
     );
 
     log("OCR完了");
 
     const text = result.data.text;
+
+    log("抽出結果（先頭）: " + text.substring(0,100));
+
     alert(text.substring(0,200));
 
     document.getElementById("status").innerText = "完了";
 
-  } catch(e){
+  }catch(e){
     console.error(e);
     log("OCRエラー: " + e);
-    document.getElementById("status").innerText = "エラー";
+    document.getElementById("status").innerText = "エラー発生";
+    alert("OCRエラー発生（ログ確認）");
   }
-}
 }
 </script>
 
