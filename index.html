@@ -28,9 +28,54 @@ function testClick(){
 }
 
 async function runOCR(){
-  alert("OCR起動");
-  log("OCR開始");
-}
+log("OCR結果:\n" + text);
+
+let lines = text.split("\n")
+  .map(l => l.replace(/\s+/g," "))
+  .map(l => l.trim())
+  .filter(l => l.length > 0);
+
+let players = [];
+
+lines.forEach(line => {
+
+  let match = line.match(/(.*?)(\d{4,7})$/);
+  if(!match) return;
+
+  let name = match[1]
+    .replace(/[^a-zA-Z0-9ぁ-んァ-ン一-龥]/g, "")
+    .trim();
+
+  let power = parseInt(match[2]);
+
+  if(!name || name.length < 2) return;
+  if(!power || power < 1000) return;
+
+  players.push({ name, power });
+});
+
+log("抽出数: " + players.length);
+
+players.forEach(p=>{
+  log(`${p.name} / ${p.power}`);
+});
+
+players.sort((a,b)=>b.power-a.power);
+
+let A=[], B=[];
+let sumA=0, sumB=0;
+
+players.forEach(p=>{
+  if(sumA <= sumB){
+    A.push(p);
+    sumA += p.power;
+  } else {
+    B.push(p);
+    sumB += p.power;
+  }
+});
+
+log("チーム分け完了");
 </script>
 
 </body>
