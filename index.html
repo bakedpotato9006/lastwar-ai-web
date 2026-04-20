@@ -72,20 +72,48 @@ async function runOCR(){
 
     const text = result.data.text;
 
-    log("OCR完了");
-    log("結果:\n" + text);
+    log("OCR生テキスト:\n" + text);
 
-    alert("OCR完了（先頭）:\n" + text.substring(0,200));
+// 改行分解
+let lines = text.split("\n")
+  .map(l => l.trim())
+  .filter(l => l.length > 0);
 
-    document.getElementById("status").innerText = "完了";
+let players = [];
 
-  } catch(e){
+lines.forEach(line => {
 
-    console.error(e);
-    log("エラー: " + e);
-    alert("OCRエラー発生");
+  let powerMatch = line.match(/(\d{3,})/);
+  if(!powerMatch) return;
+
+  let power = parseInt(powerMatch[1]);
+
+  let name = line.replace(/\d+/g, "").trim();
+
+  if(name.length < 2) return;
+  if(power < 100) return;
+
+  players.push({ name, power });
+});
+
+log("抽出結果数: " + players.length);
+
+// ソート
+players.sort((a,b)=>b.power-a.power);
+
+// チーム分け
+let A=[], B=[];
+let sumA=0, sumB=0;
+
+players.forEach(p=>{
+  if(sumA <= sumB){
+    A.push(p);
+    sumA += p.power;
+  } else {
+    B.push(p);
+    sumB += p.power;
   }
-}
+});
 </script>
 
 </body>
