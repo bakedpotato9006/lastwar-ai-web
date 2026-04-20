@@ -74,8 +74,9 @@ async function runOCR(){
 
     log("OCR生テキスト:\n" + text);
 
-// 改行分解
+// 行分割
 let lines = text.split("\n")
+  .map(l => l.replace(/\s+/g, " "))
   .map(l => l.trim())
   .filter(l => l.length > 0);
 
@@ -83,22 +84,27 @@ let players = [];
 
 lines.forEach(line => {
 
-  let powerMatch = line.match(/(\d{3,})/);
-  if(!powerMatch) return;
+  let match = line.match(/(.*?)(\d{4,7})$/);
+  if(!match) return;
 
-  let power = parseInt(powerMatch[1]);
+  let name = match[1]
+    .replace(/[^a-zA-Z0-9ぁ-んァ-ン一-龥]/g, "")
+    .trim();
 
-  let name = line.replace(/\d+/g, "").trim();
+  let power = parseInt(match[2]);
 
-  if(name.length < 2) return;
-  if(power < 100) return;
+  if(!name || name.length < 2) return;
+  if(!power || power < 1000) return;
 
   players.push({ name, power });
 });
 
-log("抽出結果数: " + players.length);
+log("抽出成功数: " + players.length);
 
-// ソート
+players.forEach(p=>{
+  log(`PLAYER: ${p.name} / ${p.power}`);
+});
+
 players.sort((a,b)=>b.power-a.power);
 
 // チーム分け
