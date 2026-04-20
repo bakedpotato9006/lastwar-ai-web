@@ -58,6 +58,7 @@ async function runOCR(){
 
   try{
 
+    // 🔥 軽量・安定設定
     const result = await Tesseract.recognize(
       file,
       'eng',
@@ -72,54 +73,59 @@ async function runOCR(){
 
     const text = result.data.text;
 
-    log("OCR生テキスト:\n" + text);
+    log("OCR完了");
+    log(text.substring(0,300));
 
-// 行分割
-let lines = text.split("\n")
-  .map(l => l.replace(/\s+/g, " "))
-  .map(l => l.trim())
-  .filter(l => l.length > 0);
+    // 🔽 ここから解析（軽量版）
+    let lines = text.split("\n")
+      .map(l => l.trim())
+      .filter(l => l.length > 0);
 
-let players = [];
+    let players = [];
 
-lines.forEach(line => {
+    lines.forEach(line => {
 
-  let match = line.match(/(.*?)(\d{4,7})$/);
-  if(!match) return;
+      let match = line.match(/(.*?)(\d{4,7})$/);
+      if(!match) return;
 
-  let name = match[1]
-    .replace(/[^a-zA-Z0-9ぁ-んァ-ン一-龥]/g, "")
-    .trim();
+      let name = match[1]
+        .replace(/[^a-zA-Z0-9ぁ-んァ-ン一-龥]/g, "")
+        .trim();
 
-  let power = parseInt(match[2]);
+      let power = parseInt(match[2]);
 
-  if(!name || name.length < 2) return;
-  if(!power || power < 1000) return;
+      if(!name || name.length < 2) return;
+      if(!power || power < 1000) return;
 
-  players.push({ name, power });
-});
+      players.push({ name, power });
+    });
 
-log("抽出成功数: " + players.length);
+    log("抽出数: " + players.length);
 
-players.forEach(p=>{
-  log(`PLAYER: ${p.name} / ${p.power}`);
-});
+    players.sort((a,b)=>b.power-a.power);
 
-players.sort((a,b)=>b.power-a.power);
+    let A=[], B=[];
+    let sumA=0, sumB=0;
 
-// チーム分け
-let A=[], B=[];
-let sumA=0, sumB=0;
+    players.forEach(p=>{
+      if(sumA <= sumB){
+        A.push(p);
+        sumA += p.power;
+      } else {
+        B.push(p);
+        sumB += p.power;
+      }
+    });
 
-players.forEach(p=>{
-  if(sumA <= sumB){
-    A.push(p);
-    sumA += p.power;
-  } else {
-    B.push(p);
-    sumB += p.power;
+    document.getElementById("status").innerText = "完了";
+
+  } catch(e){
+
+    console.error(e);
+    log("エラー: " + e);
+    document.getElementById("status").innerText = "エラー";
   }
-});
+}
 </script>
 
 </body>
