@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>LastWar AI 蓄積版</title>
+<title>LastWar AI 完全安定版</title>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 
 <style>
@@ -10,12 +10,13 @@ body { font-family: sans-serif; padding: 20px; }
 .team { margin-top:20px; }
 .red { color:red; font-weight:bold; }
 button { margin-top:10px; margin-right:10px; }
+.log { font-size:12px; color:gray; }
 </style>
 </head>
 
 <body>
 
-<h2>LastWar 編成AI（蓄積型）</h2>
+<h2>LastWar 編成AI（安定版）</h2>
 
 <input type="file" id="imageInput">
 <br>
@@ -23,6 +24,12 @@ button { margin-top:10px; margin-right:10px; }
 <button onclick="addImage()">画像を追加</button>
 <button onclick="buildTeams()">編成する</button>
 <button onclick="resetData()">リセット</button>
+
+<h3>状態</h3>
+<div id="status"></div>
+
+<h3>ログ</h3>
+<div id="log" class="log"></div>
 
 <h3>読み取り済みメンバー</h3>
 <div id="list"></div>
@@ -32,38 +39,62 @@ button { margin-top:10px; margin-right:10px; }
 <script>
 let allPlayers = {};
 
+function log(msg){
+  document.getElementById("log").innerHTML += msg + "<br>";
+}
+
 async function addImage() {
-  const file = document.getElementById("imageInput").files[0];
-  if (!file) return;
+  const input = document.getElementById("imageInput");
+  const file = input.files[0];
 
-  document.getElementById("result").innerText = "解析中...";
+  if (!file) {
+    alert("画像を選択してください");
+    return;
+  }
 
-  const { data: { text } } = await Tesseract.recognize(file, 'eng+jpn', {
-    tessedit_pageseg_mode: 6
-  });
+  document.getElementById("status").innerText = "解析開始...";
+  log("画像読み込み開始");
 
-  let lines = text.split("\n")
-    .map(l => l.trim())
-    .filter(l => l.length > 0);
+  try {
+    const { data: { text } } = await Tesseract.recognize(file, 'eng+jpn', {
+      tessedit_pageseg_mode: 6
+    });
 
-  lines.forEach(line => {
-    let match = line.match(/(.+?)\s*(\d{3,})$/);
-    if (!match) return;
+    log("OCR完了");
 
-    let name = match[1].trim();
-    let power = parseInt(match[2]);
+    let lines = text.split("\n")
+      .map(l => l.trim())
+      .filter(l => l.length > 0);
 
-    if (name.length < 2) return;
-    if (power < 100) return;
+    log("行数: " + lines.length);
 
-    // 重複は強い方を残す
-    if (!allPlayers[name] || allPlayers[name] < power) {
-      allPlayers[name] = power;
-    }
-  });
+    lines.forEach(line => {
+      let match = line.match(/(.+?)\s*(\d{3,})$/);
+      if (!match) return;
 
-  updateList();
-  document.getElementById("result").innerText = "追加完了";
+      let name = match[1].trim();
+      let power = parseInt(match[2]);
+
+      if (name.length < 2) return;
+      if (power < 100) return;
+
+      if (!allPlayers[name] || allPlayers[name] < power) {
+        allPlayers[name] = power;
+        log("追加: " + name + " " + power);
+      }
+    });
+
+    updateList();
+    document.getElementById("status").innerText = "追加完了";
+
+    // 🔥 重要：再選択可能にする
+    input.value = "";
+
+  } catch (e) {
+    console.error(e);
+    log("エラー: " + e);
+    document.getElementById("status").innerText = "エラー発生";
+  }
 }
 
 function updateList() {
@@ -126,6 +157,8 @@ function resetData() {
   allPlayers = {};
   document.getElementById("list").innerHTML = "";
   document.getElementById("result").innerHTML = "";
+  document.getElementById("log").innerHTML = "";
+  document.getElementById("status").innerText = "リセット完了";
 }
 </script>
 
