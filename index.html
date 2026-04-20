@@ -28,54 +28,31 @@ function testClick(){
 }
 
 async function runOCR(){
-log("OCR結果:\n" + text);
+log("OCR開始");
 
-let lines = text.split("\n")
-  .map(l => l.replace(/\s+/g," "))
-  .map(l => l.trim())
-  .filter(l => l.length > 0);
+try {
 
-let players = [];
+  const result = await Tesseract.recognize(
+    file,
+    'eng',
+    {
+      logger: m => {
+        if (m.status === "recognizing text") {
+          log("解析中...");
+        }
+      }
+    }
+  );
 
-lines.forEach(line => {
+  log("OCR完了");
 
-  let match = line.match(/(.*?)(\d{4,7})$/);
-  if(!match) return;
+  const text = result.data.text;
 
-  let name = match[1]
-    .replace(/[^a-zA-Z0-9ぁ-んァ-ン一-龥]/g, "")
-    .trim();
+  log("結果:\n" + text.substring(0,200));
 
-  let power = parseInt(match[2]);
-
-  if(!name || name.length < 2) return;
-  if(!power || power < 1000) return;
-
-  players.push({ name, power });
-});
-
-log("抽出数: " + players.length);
-
-players.forEach(p=>{
-  log(`${p.name} / ${p.power}`);
-});
-
-players.sort((a,b)=>b.power-a.power);
-
-let A=[], B=[];
-let sumA=0, sumB=0;
-
-players.forEach(p=>{
-  if(sumA <= sumB){
-    A.push(p);
-    sumA += p.power;
-  } else {
-    B.push(p);
-    sumB += p.power;
-  }
-});
-
-log("チーム分け完了");
+} catch (e) {
+  log("OCRエラー: " + e);
+}
 </script>
 
 </body>
