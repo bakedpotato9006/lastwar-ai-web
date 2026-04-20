@@ -1,22 +1,105 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>LastWar AI デバッグ版</title>
+
+<style>
+body { font-family: sans-serif; padding: 20px; }
+button { margin-top:10px; }
+.log { font-size:12px; color:gray; margin-top:10px; }
+</style>
+
+</head>
+
+<body>
+
+<h2>LastWar AI（デバッグ版）</h2>
+
 <input type="file" id="imageInput">
-<button onclick="testOCR()">テスト</button>
+<br>
+
+<button onclick="testClick()">① ボタンテスト</button>
+<button onclick="checkFile()">② ファイル確認</button>
+<button onclick="runOCR()">③ OCRテスト</button>
+
+<h3>状態</h3>
+<div id="status"></div>
+
+<h3>ログ</h3>
+<div id="log" class="log"></div>
+
+<!-- JSは必ず最後 -->
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 
 <script>
-async function testOCR(){
+function log(msg){
+  document.getElementById("log").innerHTML += msg + "<br>";
+}
+
+// ① ボタン確認
+function testClick(){
+  alert("ボタンは動いています");
+  log("ボタンOK");
+}
+
+// ② ファイル確認
+function checkFile(){
   const file = document.getElementById("imageInput").files[0];
-  if(!file){ alert("選択して"); return; }
 
-  const worker = await Tesseract.createWorker();
+  if(!file){
+    alert("ファイル未選択");
+    log("ファイルなし");
+    return;
+  }
 
-  await worker.loadLanguage('eng');
-  await worker.initialize('eng');
+  alert("ファイル取得OK");
+  log("ファイル名: " + file.name);
+}
 
-  const { data: { text } } = await worker.recognize(file);
+// ③ OCRテスト（軽量版）
+async function runOCR(){
+  const file = document.getElementById("imageInput").files[0];
 
-  alert(text);
+  if(!file){
+    alert("ファイルを選択してください");
+    log("OCR開始失敗：ファイルなし");
+    return;
+  }
 
-  await worker.terminate();
+  document.getElementById("status").innerText = "OCR開始...";
+  log("OCR開始");
+
+  try{
+    const worker = await Tesseract.createWorker({
+      logger: m => log(m.status)
+    });
+
+    log("worker作成");
+
+    await worker.loadLanguage('eng');
+    await worker.initialize('eng');
+
+    log("認識開始");
+
+    const { data: { text } } = await worker.recognize(file);
+
+    log("OCR完了");
+
+    alert("結果:\n" + text.substring(0,200));
+
+    await worker.terminate();
+    log("worker終了");
+
+    document.getElementById("status").innerText = "完了";
+
+  }catch(e){
+    console.error(e);
+    log("エラー: " + e);
+    document.getElementById("status").innerText = "エラー発生";
+  }
 }
 </script>
 
-<button onclick="alert('押された')">テスト</button>
+</body>
+</html>
