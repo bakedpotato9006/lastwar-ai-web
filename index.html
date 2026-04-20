@@ -63,7 +63,6 @@ async function runOCR(){
 
   if(!file){
     alert("ファイルを選択してください");
-    log("OCR開始失敗：ファイルなし");
     return;
   }
 
@@ -71,33 +70,27 @@ async function runOCR(){
   log("OCR開始");
 
   try{
-    const worker = await Tesseract.createWorker({
-      logger: m => log(m.status)
-    });
-
-    log("worker作成");
-
-    await worker.loadLanguage('eng');
-    await worker.initialize('eng');
-
-    log("認識開始");
-
-    const { data: { text } } = await worker.recognize(file);
+    const result = await Tesseract.recognize(
+      file,
+      'eng',
+      {
+        logger: m => log(m.status)
+      }
+    );
 
     log("OCR完了");
 
-    alert("結果:\n" + text.substring(0,200));
-
-    await worker.terminate();
-    log("worker終了");
+    const text = result.data.text;
+    alert(text.substring(0,200));
 
     document.getElementById("status").innerText = "完了";
 
-  }catch(e){
+  } catch(e){
     console.error(e);
-    log("エラー: " + e);
-    document.getElementById("status").innerText = "エラー発生";
+    log("OCRエラー: " + e);
+    document.getElementById("status").innerText = "エラー";
   }
+}
 }
 </script>
 
