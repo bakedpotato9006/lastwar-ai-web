@@ -46,45 +46,44 @@ function testClick(){
 // ② OCR
 async function runOCR(){
 
-  log("runOCR開始");
-
   const file = document.getElementById("imageInput").files[0];
 
   if(!file){
     alert("画像を選択してください");
-    log("エラー：ファイル未選択");
     return;
   }
 
   document.getElementById("status").innerText = "OCR開始...";
-  log("ファイル取得OK: " + file.name);
+  log("OCR開始");
 
   try{
-    log("Tesseract開始");
 
     const result = await Tesseract.recognize(
       file,
       'eng',
       {
-        logger: m => log("進行: " + m.status)
+        logger: m => {
+          if(m.status){
+            log("進行: " + m.status);
+          }
+        }
       }
     );
 
-    log("OCR完了");
-
     const text = result.data.text;
 
-    log("抽出結果（先頭）: " + text.substring(0,100));
+    log("OCR完了");
+    log("結果:\n" + text);
 
-    alert(text.substring(0,200));
+    alert("OCR完了（先頭）:\n" + text.substring(0,200));
 
     document.getElementById("status").innerText = "完了";
 
-  }catch(e){
+  } catch(e){
+
     console.error(e);
-    log("OCRエラー: " + e);
-    document.getElementById("status").innerText = "エラー発生";
-    alert("OCRエラー発生（ログ確認）");
+    log("エラー: " + e);
+    alert("OCRエラー発生");
   }
 }
 </script>
