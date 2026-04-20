@@ -2,73 +2,86 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>LastWar AI</title>
+<title>LastWar AI 完全版</title>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 
 <style>
 body { font-family: sans-serif; padding: 20px; }
 .team { margin-top:20px; }
 .red { color:red; font-weight:bold; }
+button { margin-top:10px; }
 </style>
 </head>
 
 <body>
 
-<h2>LastWar 編成AI（実戦版）</h2>
+<h2>LastWar 編成AI（完全版）</h2>
 
-<input type="file" id="imageInput">
+<input type="file" id="imageInput" multiple>
+<br>
 <button onclick="runOCR()">解析</button>
 
 <div id="result"></div>
 
 <script>
 async function runOCR() {
-  const file = document.getElementById("imageInput").files[0];
-  if (!file) return;
+  const files = document.getElementById("imageInput").files;
+  if (!files.length) return;
 
-  document.getElementById("result").innerText = "解析中...";
+  document.getElementById("result").innerText = "解析中...（複数画像対応）";
 
-  const { data: { text } } = await Tesseract.recognize(file, 'eng+jpn');
+  let allPlayers = [];
 
-  let lines = text.split("\n").map(l => l.trim()).filter(l => l.length > 0);
+  for (const file of files) {
+    const { data: { text } } = await Tesseract.recognize(file, 'eng+jpn', {
+      tessedit_pageseg_mode: 6
+    });
 
-  let players = [];
+    let lines = text.split("\n")
+      .map(l => l.trim())
+      .filter(l => l.length > 0);
 
-  lines.forEach(line => {
-    // 数字（戦力）を優先抽出
-    let num = line.match(/\d{3,}/);
+    lines.forEach(line => {
+      // 名前 + 数値をセットで抽出
+      let match = line.match(/(.+?)\s*(\d{3,})$/);
+      if (!match) return;
 
-    if (!num) return;
+      let name = match[1].trim();
+      let power = parseInt(match[2]);
 
-    let power = parseInt(num[0]);
+      // ノイズ除去
+      if (name.length < 2) return;
+      if (power < 100) return;
 
-    // 名前は数字以外
-    let name = line.replace(/\d+/g, '').trim();
+      allPlayers.push({ name, power });
+    });
+  }
 
-    // ノイズ除去
-    if (name.length < 2) return;
-    if (power < 100) return;
-
-    players.push({ name, power });
+  // 重複削除（名前基準）
+  let unique = {};
+  allPlayers.forEach(p => {
+    if (!unique[p.name] || unique[p.name] < p.power) {
+      unique[p.name] = p.power;
+    }
   });
 
-  // 重複削除（簡易）
-  players = players.filter((v,i,a)=>
-    a.findIndex(t => t.name === v.name) === i
-  );
+  let players = Object.keys(unique).map(name => ({
+    name,
+    power: unique[name]
+  }));
 
-  // ソート
+  // 戦力順ソート
   players.sort((a,b)=>b.power-a.power);
 
-  // チーム分け（強化版）
+  // チーム分け（バランス）
   let A=[], B=[];
   let sumA=0, sumB=0;
 
   players.forEach(p=>{
-    if(sumA<=sumB){
-      A.push(p); sumA+=p.power;
+    if(sumA <= sumB){
+      A.push(p); sumA += p.power;
     } else {
-      B.push(p); sumB+=p.power;
+      B.push(p); sumB += p.power;
     }
   });
 
@@ -81,29 +94,4 @@ async function runOCR() {
     main.forEach(p=>txt+=`${p.name} ${p.power}<br>`);
 
     txt += "<br><b>交代</b><br>";
-    sub.forEach(p=>txt+=`${p.name} ${p.power}<br>`);
-
-    txt += "<br><b class='red'>溢れ</b><br>";
-    overflow.forEach(p=>txt+=`<span class='red'>${p.name} ${p.power}</span><br>`);
-
-    return txt;
-  }
-
-  let html = `
-  <div class="team">
-    <h3>TEAM A (${sumA})</h3>
-    ${formatTeam(A)}
-  </div>
-
-  <div class="team">
-    <h3>TEAM B (${sumB})</h3>
-    ${formatTeam(B)}
-  </div>
-  `;
-
-  document.getElementById("result").innerHTML = html;
-}
-</script>
-
-</body>
-</html>
+    sub.forEach(p=>txt+=`${p
