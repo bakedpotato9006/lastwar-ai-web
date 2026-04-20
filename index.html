@@ -14,7 +14,7 @@ body { font-family: sans-serif; padding: 20px; }
 
 <body>
 
-<h2>LastWar 編成AI（強化版）</h2>
+<h2>LastWar 編成AI（実戦版）</h2>
 
 <input type="file" id="imageInput">
 <button onclick="runOCR()">解析</button>
@@ -28,32 +28,48 @@ async function runOCR() {
 
   document.getElementById("result").innerText = "解析中...";
 
-  const { data: { text } } = await Tesseract.recognize(file, 'eng');
+  const { data: { text } } = await Tesseract.recognize(file, 'eng+jpn');
 
-  let lines = text.split("\n");
+  let lines = text.split("\n").map(l => l.trim()).filter(l => l.length > 0);
 
   let players = [];
 
   lines.forEach(line => {
-    let match = line.match(/([A-Za-z]+)\s*(\d{2,})/);
-    if (match) {
-      players.push({
-        name: match[1],
-        power: parseInt(match[2])
-      });
-    }
+    // 数字（戦力）を優先抽出
+    let num = line.match(/\d{3,}/);
+
+    if (!num) return;
+
+    let power = parseInt(num[0]);
+
+    // 名前は数字以外
+    let name = line.replace(/\d+/g, '').trim();
+
+    // ノイズ除去
+    if (name.length < 2) return;
+    if (power < 100) return;
+
+    players.push({ name, power });
   });
 
-  // 戦力順
+  // 重複削除（簡易）
+  players = players.filter((v,i,a)=>
+    a.findIndex(t => t.name === v.name) === i
+  );
+
+  // ソート
   players.sort((a,b)=>b.power-a.power);
 
-  // チーム分け
+  // チーム分け（強化版）
   let A=[], B=[];
   let sumA=0, sumB=0;
 
   players.forEach(p=>{
-    if(sumA<=sumB){ A.push(p); sumA+=p.power; }
-    else{ B.push(p); sumB+=p.power; }
+    if(sumA<=sumB){
+      A.push(p); sumA+=p.power;
+    } else {
+      B.push(p); sumB+=p.power;
+    }
   });
 
   function formatTeam(team){
