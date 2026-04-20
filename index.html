@@ -1,166 +1,20 @@
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<title>LastWar AI 完全安定版</title>
-<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-
-<style>
-body { font-family: sans-serif; padding: 20px; }
-.team { margin-top:20px; }
-.red { color:red; font-weight:bold; }
-button { margin-top:10px; margin-right:10px; }
-.log { font-size:12px; color:gray; }
-</style>
-</head>
-
-<body>
-
-<h2>LastWar 編成AI（安定版）</h2>
-
 <input type="file" id="imageInput">
-<br>
-
-<button onclick="addImage()">画像を追加</button>
-<button onclick="buildTeams()">編成する</button>
-<button onclick="resetData()">リセット</button>
-
-<h3>状態</h3>
-<div id="status"></div>
-
-<h3>ログ</h3>
-<div id="log" class="log"></div>
-
-<h3>読み取り済みメンバー</h3>
-<div id="list"></div>
-
-<div id="result"></div>
+<button onclick="testOCR()">テスト</button>
 
 <script>
-let allPlayers = {};
+async function testOCR(){
+  const file = document.getElementById("imageInput").files[0];
+  if(!file){ alert("選択して"); return; }
 
-function log(msg){
-  document.getElementById("log").innerHTML += msg + "<br>";
-}
+  const worker = await Tesseract.createWorker();
 
-async function addImage() {
-  const input = document.getElementById("imageInput");
-  const file = input.files[0];
+  await worker.loadLanguage('eng');
+  await worker.initialize('eng');
 
-  if (!file) {
-    alert("画像を選択してください");
-    return;
-  }
+  const { data: { text } } = await worker.recognize(file);
 
-  document.getElementById("status").innerText = "解析開始...";
-  log("画像読み込み開始");
+  alert(text);
 
-  try {
-    const { data: { text } } = await Tesseract.recognize(file, 'eng+jpn', {
-      tessedit_pageseg_mode: 6
-    });
-
-    log("OCR完了");
-
-    let lines = text.split("\n")
-      .map(l => l.trim())
-      .filter(l => l.length > 0);
-
-    log("行数: " + lines.length);
-
-    lines.forEach(line => {
-      let match = line.match(/(.+?)\s*(\d{3,})$/);
-      if (!match) return;
-
-      let name = match[1].trim();
-      let power = parseInt(match[2]);
-
-      if (name.length < 2) return;
-      if (power < 100) return;
-
-      if (!allPlayers[name] || allPlayers[name] < power) {
-        allPlayers[name] = power;
-        log("追加: " + name + " " + power);
-      }
-    });
-
-    updateList();
-    document.getElementById("status").innerText = "追加完了";
-
-    // 🔥 重要：再選択可能にする
-    input.value = "";
-
-  } catch (e) {
-    console.error(e);
-    log("エラー: " + e);
-    document.getElementById("status").innerText = "エラー発生";
-  }
-}
-
-function updateList() {
-  let html = "";
-  Object.entries(allPlayers).forEach(([name, power])=>{
-    html += `${name} ${power}<br>`;
-  });
-  document.getElementById("list").innerHTML = html;
-}
-
-function buildTeams() {
-  let players = Object.entries(allPlayers).map(([name,power])=>({name,power}));
-
-  players.sort((a,b)=>b.power-a.power);
-
-  let A=[], B=[];
-  let sumA=0, sumB=0;
-
-  players.forEach(p=>{
-    if(sumA<=sumB){
-      A.push(p); sumA+=p.power;
-    } else {
-      B.push(p); sumB+=p.power;
-    }
-  });
-
-  function formatTeam(team){
-    let main = team.slice(0,20);
-    let sub = team.slice(20,30);
-    let overflow = team.slice(30);
-
-    let txt = "<b>先発</b><br>";
-    main.forEach(p=>txt+=`${p.name} ${p.power}<br>`);
-
-    txt += "<br><b>交代</b><br>";
-    sub.forEach(p=>txt+=`${p.name} ${p.power}<br>`);
-
-    txt += "<br><b class='red'>溢れ</b><br>";
-    overflow.forEach(p=>txt+=`<span class='red'>${p.name} ${p.power}</span><br>`);
-
-    return txt;
-  }
-
-  let html = `
-  <div class="team">
-    <h3>TEAM A (${sumA})</h3>
-    ${formatTeam(A)}
-  </div>
-
-  <div class="team">
-    <h3>TEAM B (${sumB})</h3>
-    ${formatTeam(B)}
-  </div>
-  `;
-
-  document.getElementById("result").innerHTML = html;
-}
-
-function resetData() {
-  allPlayers = {};
-  document.getElementById("list").innerHTML = "";
-  document.getElementById("result").innerHTML = "";
-  document.getElementById("log").innerHTML = "";
-  document.getElementById("status").innerText = "リセット完了";
+  await worker.terminate();
 }
 </script>
-
-</body>
-</html>
