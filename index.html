@@ -2,58 +2,71 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>LastWar AI</title>
+<title>LastWar AI 安定デバッグ版</title>
+
+<style>
+body { font-family: sans-serif; padding: 20px; }
+button { margin-top:10px; }
+#log { font-size:12px; color:gray; white-space:pre-wrap; margin-top:10px; }
+</style>
 </head>
 
 <body>
 
-<input type="file" id="imageInput">
+<h2>LastWar AI（最終デバッグ版）</h2>
 
-<button onclick="testClick()">テスト</button>
+<input type="file" id="imageInput" accept="image/*">
+<br>
+
+<button onclick="testBtn()">テスト</button>
 <button onclick="runOCR()">OCR実行</button>
 
+<h3>状態</h3>
+<div id="status">待機中</div>
+
+<h3>ログ</h3>
 <div id="log"></div>
 
-<!-- 🔥 ここが最重要（必ずここ） -->
 <script src="https://unpkg.com/tesseract.js@5.0.4/dist/tesseract.min.js"></script>
 
 <script>
 function log(msg){
-  document.getElementById("log").innerHTML += msg + "<br>";
+  console.log(msg);
+  document.getElementById("log").innerHTML += msg + "\n";
 }
 
-function testClick(){
-  alert("OK");
-  log("テストOK");
+// ボタン確認
+function testBtn(){
+  alert("ボタンOK");
+  log("テストボタン動作OK");
 }
 
 async function runOCR(){
-log("OCR開始");
 
-try {
+  log("=== runOCR開始 ===");
 
-  const result = await Tesseract.recognize(
-    file,
-    'eng',
-    {
-      logger: m => {
-        if (m.status === "recognizing text") {
-          log("解析中...");
-        }
-      }
-    }
-  );
+  const input = document.getElementById("imageInput");
 
-  log("OCR完了");
+  log("ファイル数: " + (input.files ? input.files.length : 0));
 
-  const text = result.data.text;
+  if(!input.files || input.files.length === 0){
+    alert("画像が選択されていません");
+    log("エラー: fileなし");
+    return;
+  }
 
-  log("結果:\n" + text.substring(0,200));
+  const file = input.files[0];
 
-} catch (e) {
-  log("OCRエラー: " + e);
-}
-</script>
+  log("ファイル取得OK: " + file.name);
 
-</body>
-</html>
+  document.getElementById("status").innerText = "OCR開始...";
+
+  try {
+
+    log("Tesseract呼び出し開始");
+
+    const result = await Tesseract.recognize(
+      file,
+      'eng',
+      {
+        logger
