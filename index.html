@@ -2,86 +2,91 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>LastWar AI 完全版</title>
+<title>LastWar AI 蓄積版</title>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 
 <style>
 body { font-family: sans-serif; padding: 20px; }
 .team { margin-top:20px; }
 .red { color:red; font-weight:bold; }
-button { margin-top:10px; }
+button { margin-top:10px; margin-right:10px; }
 </style>
 </head>
 
 <body>
 
-<h2>LastWar 編成AI（完全版）</h2>
+<h2>LastWar 編成AI（蓄積型）</h2>
 
-<input type="file" id="imageInput" multiple>
+<input type="file" id="imageInput">
 <br>
-<button onclick="runOCR()">解析</button>
+
+<button onclick="addImage()">画像を追加</button>
+<button onclick="buildTeams()">編成する</button>
+<button onclick="resetData()">リセット</button>
+
+<h3>読み取り済みメンバー</h3>
+<div id="list"></div>
 
 <div id="result"></div>
 
 <script>
-async function runOCR() {
-  const files = document.getElementById("imageInput").files;
-  if (!files.length) return;
+let allPlayers = {};
 
-  document.getElementById("result").innerText = "解析中...（複数画像対応）";
+async function addImage() {
+  const file = document.getElementById("imageInput").files[0];
+  if (!file) return;
 
-  let allPlayers = [];
+  document.getElementById("result").innerText = "解析中...";
 
-  for (const file of files) {
-    const { data: { text } } = await Tesseract.recognize(file, 'eng+jpn', {
-      tessedit_pageseg_mode: 6
-    });
+  const { data: { text } } = await Tesseract.recognize(file, 'eng+jpn', {
+    tessedit_pageseg_mode: 6
+  });
 
-    let lines = text.split("\n")
-      .map(l => l.trim())
-      .filter(l => l.length > 0);
+  let lines = text.split("\n")
+    .map(l => l.trim())
+    .filter(l => l.length > 0);
 
-    lines.forEach(line => {
-      // 名前 + 数値をセットで抽出
-      let match = line.match(/(.+?)\s*(\d{3,})$/);
-      if (!match) return;
+  lines.forEach(line => {
+    let match = line.match(/(.+?)\s*(\d{3,})$/);
+    if (!match) return;
 
-      let name = match[1].trim();
-      let power = parseInt(match[2]);
+    let name = match[1].trim();
+    let power = parseInt(match[2]);
 
-      // ノイズ除去
-      if (name.length < 2) return;
-      if (power < 100) return;
+    if (name.length < 2) return;
+    if (power < 100) return;
 
-      allPlayers.push({ name, power });
-    });
-  }
-
-  // 重複削除（名前基準）
-  let unique = {};
-  allPlayers.forEach(p => {
-    if (!unique[p.name] || unique[p.name] < p.power) {
-      unique[p.name] = p.power;
+    // 重複は強い方を残す
+    if (!allPlayers[name] || allPlayers[name] < power) {
+      allPlayers[name] = power;
     }
   });
 
-  let players = Object.keys(unique).map(name => ({
-    name,
-    power: unique[name]
-  }));
+  updateList();
+  document.getElementById("result").innerText = "追加完了";
+}
 
-  // 戦力順ソート
+function updateList() {
+  let html = "";
+  Object.entries(allPlayers).forEach(([name, power])=>{
+    html += `${name} ${power}<br>`;
+  });
+  document.getElementById("list").innerHTML = html;
+}
+
+function buildTeams() {
+  let players = Object.entries(allPlayers).map(([name,power])=>({name,power}));
+
   players.sort((a,b)=>b.power-a.power);
 
-  // チーム分け（バランス）
   let A=[], B=[];
   let sumA=0, sumB=0;
 
   players.forEach(p=>{
-    if(sumA <= sumB){
-      A.push(p); sumA += p.power;
+    if(sumA<=sumB){
+      A.push(p); sumA+=p.power;
     } else {
-      B.push(p); sumB += p.power;
+      B.push(p); sumB+=p.power;
     }
   });
 
@@ -94,4 +99,35 @@ async function runOCR() {
     main.forEach(p=>txt+=`${p.name} ${p.power}<br>`);
 
     txt += "<br><b>交代</b><br>";
-    sub.forEach(p=>txt+=`${p
+    sub.forEach(p=>txt+=`${p.name} ${p.power}<br>`);
+
+    txt += "<br><b class='red'>溢れ</b><br>";
+    overflow.forEach(p=>txt+=`<span class='red'>${p.name} ${p.power}</span><br>`);
+
+    return txt;
+  }
+
+  let html = `
+  <div class="team">
+    <h3>TEAM A (${sumA})</h3>
+    ${formatTeam(A)}
+  </div>
+
+  <div class="team">
+    <h3>TEAM B (${sumB})</h3>
+    ${formatTeam(B)}
+  </div>
+  `;
+
+  document.getElementById("result").innerHTML = html;
+}
+
+function resetData() {
+  allPlayers = {};
+  document.getElementById("list").innerHTML = "";
+  document.getElementById("result").innerHTML = "";
+}
+</script>
+
+</body>
+</html>
